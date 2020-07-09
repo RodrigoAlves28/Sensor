@@ -1,0 +1,53 @@
+funçao diaSemana
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `diaSemana`(p_data date) RETURNS varchar(10) CHARSET utf8
+BEGIN
+	declare dia int;
+    declare diasemana varchar(10);
+    SELECT DAYOFWEEK(p_data) into dia;
+	SELECT CASE dia
+		WHEN 1 THEN 'domingo'
+        WHEN 2 THEN 'segunda'
+        WHEN 3 THEN 'terça'
+        WHEN 4 THEN 'quarta'
+        WHEN 5 THEN 'quinta'
+        WHEN 6 THEN 'sexta'
+        WHEN 7 THEN 'sabado'
+        ELSE ''
+	END into diasemana;
+RETURN diasemana;
+END
+
+funçao existeRonda
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `existeRonda`(p_dataHora timestamp) RETURNS tinyint(1)
+BEGIN
+	declare p_existeRonda boolean;
+	declare dataDia date;
+    declare p_diaSemana varchar(10);
+    declare horaMedicao time;
+    declare diaRonda varchar(10);
+    declare duracao time;
+    SELECT DuracaoRonda from sistema into duracao;
+    SELECT DATE(p_dataHora), TIME(p_dataHora) into dataDia,horaMedicao;
+    SELECT diaSemana(dataDia) into p_diaSemana;
+    Select exists(select DiaSemana from diasemana where DiaSemana=p_diaSemana) into p_existeRonda;
+    if(p_existeRonda)then
+        SELECT exists(select HoraRonda from diasemana where DiaSemana=p_diaSemana and horaMedicao between HoraRonda and Addtime(HoraRonda,duracao)) into p_existeRonda;
+    end if;
+    if(p_existeRonda is false)then
+		SELECT exists(select DataHora from rondaextra where p_dataHora between DataHora and ADDTIME(DataHora,duracao)) into p_existeRonda;
+	end if;
+RETURN p_existeRonda;
+END
+
+funçao numeroMedicoes
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `numeroMedicoes`(limite decimal) RETURNS int(11)
+BEGIN
+	declare n int;
+	Select COUNT(*) from (SELECT * FROM medicoessensores where TipoSensor='luz'
+	ORDER BY IDmedicao DESC LIMIT 3) as Table2 where Table2.ValorMedicao>limite and 
+    existeRonda(Table2.DataHoraMedicao) is false into n;
+RETURN n;
+END

@@ -1,0 +1,26 @@
+trigger luz e movimento
+
+CREATE DEFINER=`root`@`localhost` TRIGGER `museu2`.`medicoessensores_AFTER_INSERT` AFTER INSERT ON `medicoessensores` FOR EACH ROW
+BEGIN
+	declare p_existeRonda_mov boolean;
+    declare p_existeRonda_luz boolean;
+    declare limiteLuz decimal;
+    declare n int;
+	IF(new.TipoSensor = 'mov' and new.ValorMedicao=1) then
+		SELECT existeRonda(new.DataHoraMedicao) into p_existeRonda_mov;
+		IF(p_existeRonda_mov is false)then
+			INSERT into Alerta(DataHoraMedicao,TipoSensor,ValorMedicao,Descricao,Controlo)
+			values (new.DataHoraMedicao,new.TipoSensor, new.ValorMedicao,'Foi detetado movimento fora do período das rondas',true);
+		end if;
+    end if;
+    IF(new.TipoSensor = 'luz')then
+		Select LimiteLuminosidade from sistema into limiteLuz;
+		IF(new.ValorMedicao>limiteLuz) then
+			SELECT numeroMedicoes(limiteLuz) into n;
+		END IF;
+		IF(n = 3)then
+			INSERT into Alerta(DataHoraMedicao,TipoSensor,ValorMedicao,Limite,Descricao,Controlo)
+			values (new.DataHoraMedicao,new.TipoSensor, new.ValorMedicao,limiteLuz,'Foi detetada luz fora do período das rondas',true);
+		end if;
+	end if;
+END

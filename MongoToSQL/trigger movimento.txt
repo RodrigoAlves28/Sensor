@@ -1,0 +1,13 @@
+trigger movimento
+
+CREATE DEFINER=`root`@`localhost` TRIGGER `museu2`.`medicoessensores_AFTER_INSERT` AFTER INSERT ON `medicoessensores` FOR EACH ROW
+BEGIN
+	declare p_existeRonda boolean;
+	IF(new.TipoSensor = 'mov' and new.ValorMedicao=1) then
+		SELECT existeRonda(new.DataHoraMedicao) into p_existeRonda;
+	END IF;
+    IF(p_existeRonda is false)then
+		INSERT into Alerta(DataHoraMedicao,TipoSensor,ValorMedicao,Descricao,Controlo)
+        values (new.DataHoraMedicao,new.TipoSensor, new.ValorMedicao,'Foi detetado movimento fora do período das rondas',true);
+	end if;
+END
